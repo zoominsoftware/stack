@@ -7,7 +7,44 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ConstraintKinds #-}
-module Stack.Types.Package where
+module Stack.Types.Package
+  ( ModTime (..)
+  , LocalPackage (..)
+  , Package (..)
+  , InstallLocation (..)
+  , PackageSource (..)
+  , dotCabalGetPath
+  , dotCabalModule
+  , dotCabalMain
+  , dotCabalModulePath
+  , dotCabalMainPath
+  , installedPackageIdentifier
+  , installedVersion
+  , modTimeVC
+  , lpFiles
+  , FileCacheInfo (..)
+  , piiPackageLocation
+  , piiLocation
+  , piiVersion
+  , testSuccessVC
+  , dotCabalCFilePath
+  , PackageWarning (..)
+  , PackageConfig (..)
+  , packageDefinedFlags
+  , GetPackageOpts (..)
+  , GetPackageFiles (..)
+  , packageIdentifier
+  , BuildInfoOpts (..)
+  , Installed (..)
+  , CabalFileType (..)
+  , InstalledPackageLocation (..)
+  , InstalledMap -- FIXME remove this!
+  , SourceMap -- FIXME remove this!
+  , DotCabalPath (..)
+  , DotCabalDescriptor (..)
+  , PackageException (..)
+  , PackageLibraries (..)
+  ) where
 
 import           Stack.Prelude
 import qualified Data.ByteString as S
