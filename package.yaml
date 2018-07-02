@@ -158,7 +158,6 @@ library:
   - Paths_stack
   - Stack.Build
   - Stack.Build.Cache
-  - Stack.Build.ConstructPlan
   - Stack.Build.Execute
   - Stack.Build.Haddock
   - Stack.Build.Installed
@@ -234,6 +233,7 @@ library:
   - Stack.Sig.Sign
   - Stack.Snapshot
   - Stack.Solver
+  - Stack.SourceMap
   - Stack.StaticBytes
   - Stack.Types.Build
   - Stack.Types.BuildPlan
@@ -256,6 +256,7 @@ library:
   - Stack.Types.Resolver
   - Stack.Types.Runner
   - Stack.Types.Sig
+  - Stack.Types.SourceMap
   - Stack.Types.TemplateName
   - Stack.Types.Version
   - Stack.Types.VersionIntervals
