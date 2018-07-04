@@ -36,7 +36,7 @@ import qualified Data.Text.IO as TIO
 import           Data.Text.Read (decimal)
 import qualified Data.Vector as V
 import qualified Data.Yaml as Yaml
-import           Stack.Build.ConstructPlan
+-- import           Stack.Build.ConstructPlan
 import           Stack.Build.Execute
 import           Stack.Build.Haddock
 import           Stack.Build.Installed

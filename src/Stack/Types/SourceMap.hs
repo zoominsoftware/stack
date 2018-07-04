@@ -13,7 +13,7 @@ module Stack.Types.SourceMap
   , ResolvedPackageSource (..)
   , ResolvedInstallable (..)
   , Toolchain (..)
-  , mkRPSKey
+  -- , mkRPSKey
   ) where
 
 import Distribution.PackageDescription (TestSuiteInterface)
@@ -72,9 +72,9 @@ data Toolchain = Toolchain
   -- FIXME identify GHC version, install location, arch, whatever else
   -- we can think of
 
-mkRPSKey
-  :: Toolchain
-  -> PackageName
-  -> ResolvedPackageSource
-  -> RPSKey
-mkRPSKey _ _ _ = RPSKey $ error "mkRPSKey"
+-- mkRPSKey
+--   :: Toolchain
+--   -> PackageName
+--   -> ResolvedPackageSource
+--   -> RPSKey
+-- mkRPSKey _ _ _ = RPSKey $ error "mkRPSKey"
