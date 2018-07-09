@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
@@ -126,14 +127,13 @@ newtype StaticSHA256 = StaticSHA256 Bytes32
     deriving (Generic, Show, Eq, NFData, Data, Typeable, Ord, Hashable, Store)
 
 -- | Generate a 'StaticSHA256' value from a base16-encoded SHA256 hash.
-mkStaticSHA256FromText :: Text -> Either SomeException StaticSHA256
+mkStaticSHA256FromText :: Text -> Either StringException StaticSHA256
 mkStaticSHA256FromText t =
-  mapLeft (toException . stringException) (Mem.convertFromBase Mem.Base16 (encodeUtf8 t))
+  mapLeft stringException (Mem.convertFromBase Mem.Base16 (encodeUtf8 t))
   >>= either (Left . toE) (Right . StaticSHA256)
-    . toStaticExact
-    . (id :: ByteString -> ByteString)
+    . toStaticExact @ByteString
   where
-    toE e = toException $ stringException $ concat
+    toE e = stringException $ concat
       [ "Unable to convert "
       , show t
       , " into SHA256: "
@@ -163,7 +163,7 @@ staticSHA256ToRaw :: StaticSHA256 -> ByteString
 staticSHA256ToRaw (StaticSHA256 x) = Data.ByteArray.convert x
 
 -- | Generate a 'CabalHash' value from a base16-encoded SHA256 hash.
-mkCabalHashFromSHA256 :: Text -> Either SomeException CabalHash
+mkCabalHashFromSHA256 :: Text -> Either StringException CabalHash
 mkCabalHashFromSHA256 = fmap CabalHash . mkStaticSHA256FromText
 
 -- | Convert a 'CabalHash' into a base16-encoded SHA256 hash.

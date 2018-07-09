@@ -5,11 +5,12 @@
 -- | A ghc-pkg id.
 
 module Stack.Types.GhcPkgId
-  (GhcPkgId
-  ,ghcPkgIdParser
-  ,parseGhcPkgId
-  ,ghcPkgIdString)
-  where
+  ( GhcPkgId
+  , ghcPkgIdParser
+  , parseGhcPkgId
+  , ghcPkgIdString
+  , ghcPkgIdText
+  ) where
 
 import           Stack.Prelude
 import           Data.Aeson.Extended
@@ -61,3 +62,6 @@ ghcPkgIdParser =
 -- | Get a string representation of GHC package id.
 ghcPkgIdString :: GhcPkgId -> String
 ghcPkgIdString (GhcPkgId x) = T.unpack x
+
+ghcPkgIdText :: GhcPkgId -> Text
+ghcPkgIdText (GhcPkgId x) = x
