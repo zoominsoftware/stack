@@ -89,6 +89,8 @@ data UnresolvedInstallable = UnresolvedInstallable
   { -- Is this needed?
     -- uiLocation :: !(PackageLocationIndex FilePath),
   uiInstallableConfig :: !InstallablePackageConfig
+  -- { uiLocation :: !(PackageLocationIndex FilePath)
+  -- , uiPackageConfig :: !PackageConfig -- FIXME probably don't need GHC info in here directly
   }
 
 data LoadedInstallable = LoadedInstallable
@@ -123,6 +125,7 @@ data ResolvedInstallable = ResolvedInstallable
   , riDeps :: !(Map PackageName RPSKey)
   }
 
+<<<<<<< HEAD
 data Toolchain =
   Toolchain {
     toolchainCompilerVersion :: CompilerVersion 'CVActual
@@ -149,6 +152,7 @@ mkRPSKey
   :: Toolchain
   -> PackageName
   -> ResolvedPackageSource
+<<<<<<< HEAD
   -> Either StringException RPSKey
 mkRPSKey toolchain pkgName rps = do
   let toolchainSubkey =
