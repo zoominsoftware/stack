@@ -212,7 +212,7 @@ instance subdirs ~ Subdirs => ToJSON (PackageLocation subdirs) where
             ExplicitSubdirs x -> ["subdirs" .= x]
         , case msha of
             Nothing -> []
-            Just sha -> ["sha256" .= staticSHA256ToText sha]
+            Just sha -> ["sha256" .= staticSHA256ToHex sha]
         ]
     toJSON (PLRepo (Repo url commit typ subdirs)) = object $ concat
         [ case subdirs of
@@ -261,7 +261,7 @@ instance subdirs ~ Subdirs => FromJSON (WithJSONWarnings (PackageLocation subdir
             case msha of
               Nothing -> return Nothing
               Just t ->
-                case mkStaticSHA256FromText t of
+                case mkStaticSHA256FromHex t of
                   Left e -> fail $ "Invalid SHA256: " ++ T.unpack t ++ ", " ++ show e
                   Right x -> return $ Just x
           return $ PLArchive Archive

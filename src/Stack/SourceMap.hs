@@ -1,20 +1,31 @@
 {-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Stack.SourceMap
   ( getUnresolvedSourceMap
   , resolveSourceMap
+  , getLocalFlags
+  , getGhcOptions
   ) where
+
+-- TODO: REMOVE YA NUMPTY
+---------------------------------------------------------------------------------
+import                                     Stack.Debug
+---------------------------------------------------------------------------------
+
+import Stack.Prelude
 
 import qualified Data.Map as Map
 import RIO.Process (HasProcessContext)
 
+import Stack.Build.Target (Target, NeedTargets(..), parseTargets)
 import Stack.Config
-import Stack.Prelude
 import Stack.Types.BuildPlan
 import Stack.Types.Compiler
 import Stack.Types.Config
+import Stack.Types.FlagName
 import Stack.Types.GhcPkgId
 import Stack.Types.PackageName
 import Stack.Types.SourceMap
@@ -57,41 +68,100 @@ import Stack.Types.SourceMap
   --           return $ PSFiles lp' loc
   -- (ls, localDeps, targets) <- parseTargets needTargets boptsCli
 
+-- data InstallablePackageConfig
+--   = SnapshotPackageConfig InstallableConfig | LocalPackageConfig
+
+-- data ResolvedInstallable
+--   = ResolvedInstallable {riUnresolved :: !UnresolvedInstallable,
+--                          riDeps :: !Map PackageName RPSKey}
+
+-- bcFlags :: !Map PackageName (Map Stack.Types.FlagName.FlagName Bool)
+
+-- parseTargets
+--     :: HasEnvConfig env
+--     => NeedTargets
+--     -> BuildOptsCLI
+--     -> RIO env
+--          ( LoadedSnapshot -- upgraded snapshot, with some packages possibly moved to local
+--          , Map PackageName (LoadedPackageInfo (PackageLocationIndex FilePath)) -- all local deps
+--          , Map PackageName Target
+--          )
+
+data ResolveSourceMapException =
+  RSMCouldNotGetUnresolvedForTarget PackageName Target
+  deriving Show
+
+instance Exception ResolveSourceMapException
+
+-- resolveSourceMap = undefined
+
 resolveSourceMap :: forall env
                   . ( HasEnvConfig env
                     )
-                 => UnresolvedSourceMap
+                 => NeedTargets
+                 -> BuildOptsCLI
+                 -> UnresolvedSourceMap
                  -> RIO env ResolvedSourceMap
-resolveSourceMap usm = do
-  -- TODO: Force Ghc?
+resolveSourceMap needTargets boptsCli usm = do
+--   -- TODO: Force Ghc?
   toolchain <- getToolchain Ghc
-  undefined $ Map.foldlWithKey' (f toolchain) (return Map.empty) usm
-  where f :: Toolchain
-          -> (RIO env ResolvedSourceMap)
-          -> PackageName
-          -> UnresolvedPackageSource
-          -> RIO env ResolvedSourceMap
-        f toolchain rsmM pkgName (UPSGlobal version ghcPkgId) = do
-          rsm <- rsmM
-          let rps = undefined
-              rpsKeyE =
-                mkRPSKey toolchain pkgName rps
-          case rpsKeyE of
-              (Left err) -> throwM err
-              (Right rpsKey) -> do
-                return $
-                  Map.insert
-                    pkgName
-                    (RPSK (RPSGlobal version ghcPkgId) rpsKey)
-                    rsm
-        f toolchain rsm pkgName (UPSInstallable (UnresolvedInstallable ipc)) =
-          case ipc of
-            LocalPackageConfig ->
-              undefined -- ???
-            SnapshotPackageConfig InstallableConfig{..} -> do
-              -- installableConfigFlags
-              -- installableGhcOptions
-              undefined
+--   -- config <- view configL
+--   -- let bOpts = configBuild config
+  (loadedSnapshot, lpi, targets) <- parseTargets needTargets boptsCli
+--   undefined $ Map.foldlWithKey' (f toolchain) (return Map.empty) usm
+  -- errorDumpPretty targets
+  -- undefined
+  loop toolchain targets Map.empty
+  where -- loop :: ???
+        loop toolchain targets accum = do
+          -- let Maybe (a, Map k a) Map.minView targets
+          case Map.minViewWithKey targets of
+            Nothing -> return accum
+            Just ((pkgName, target), rest) -> do
+              case Map.lookup pkgName usm of
+                Nothing ->
+                  throwM $ RSMCouldNotGetUnresolvedForTarget pkgName target
+                (Just ups) -> do
+                  case ups of
+                    UPSGlobal version ghcPkgId -> do
+                      let rps = RPSGlobal version ghcPkgId
+                          rpsKey = mkRPSKey toolchain pkgName rps
+                      loop toolchain rest (Map.insert pkgName (RPSK rps rpsKey) accum)
+                    UPSInstallable (UnresolvedInstallable loc ipc) -> do
+                      case ipc of
+                        LocalPackageConfig -> do
+                          let riMPR :: Map PackageName RPSKey
+                              riMPR = undefined
+                              resolvedInstallable =
+                                ResolvedInstallable
+                                  (UnresolvedInstallable loc ipc)
+                                  riMPR
+                          undefined
+                        SnapshotPackageConfig ic ->
+                          undefined
+
+--         f :: Toolchain
+--           -> RIO env ResolvedSourceMap
+--           -> PackageName
+--           -> UnresolvedPackageSource
+--           -> RIO env ResolvedSourceMap
+--         f toolchain rsmM pkgName (UPSGlobal version ghcPkgId) = do
+--           rsm <- rsmM
+--           let rps = RPSGlobal version ghcPkgId
+--               rpsKey = mkRPSKey toolchain pkgName rps
+--           return $
+--             Map.insert
+--               pkgName
+--               (RPSK (RPSGlobal version ghcPkgId) rpsKey)
+--               rsm
+--         f toolchain rsm pkgName (UPSInstallable (UnresolvedInstallable ipc)) =
+--           case ipc of
+--             LocalPackageConfig ->
+--               undefined -- ???
+--             SnapshotPackageConfig InstallableConfig{..} -> do
+--               -- installableConfigFlags
+--               -- installableGhcOptions
+--               undefined
 
 getUnresolvedSourceMap :: ( HasEnvConfig env
                           , HasLogFunc env
@@ -102,7 +172,8 @@ getUnresolvedSourceMap = do
   loadedSnapshot <- view loadedSnapshotL
   localPackages <- getLocalPackages
   let globals = lsGlobals loadedSnapshot
-      snapshotGlobalToUnresolved :: LoadedPackageInfo GhcPkgId -> UnresolvedPackageSource
+      snapshotGlobalToUnresolved :: LoadedPackageInfo GhcPkgId
+                                 -> UnresolvedPackageSource
       snapshotGlobalToUnresolved LoadedPackageInfo{..} =
         UPSGlobal lpiVersion lpiLocation
       globalMap :: UnresolvedSourceMap
@@ -113,9 +184,25 @@ getUnresolvedSourceMap = do
         getInstallableConfigForLocalPackages localPackages
       unresolvedSnapLocalPackages :: UnresolvedSourceMap
       unresolvedSnapLocalPackages =
-        fmap (UPSInstallable . UnresolvedInstallable) $
+        let localSnap =
+              Map.union
+                installableConfigLocalPackages
+                installableConfigSnapshotPackages
+            localSnapLocations =
+              Map.union
+                (fmap snd (lpDependencies localPackages))
+                (fmap lpiLocation (lsPackages loadedSnapshot))
+            f :: PackageLocationIndex FilePath
+              -> InstallablePackageConfig
+              -> UnresolvedPackageSource
+            f loc ipc =
+              UPSInstallable
+              (UnresolvedInstallable loc ipc)
+        in Map.intersectionWith f localSnapLocations localSnap
+        -- fmap (UPSInstallable . UnresolvedInstallable location) $
+        -- undefined
         -- Local packages shadow snapshot packages, union prioritizes left val 
-        Map.union installableConfigLocalPackages installableConfigSnapshotPackages
+        
   -- the local-prioritized union of snapshot & local packages with global packages,
   -- with more-local taking priority over global
   return $ Map.union unresolvedSnapLocalPackages globalMap
@@ -278,3 +365,54 @@ getInstallableConfigForSnapshot loadedSnapshot = do
 -- doctests
 -- hspec-discover
 -- code formatters
+
+-- | All flags for a local package.
+getLocalFlags
+    :: BuildConfig
+    -> BuildOptsCLI
+    -> PackageName
+    -> Map FlagName Bool
+getLocalFlags bconfig boptsCli name = Map.unions
+    [ Map.findWithDefault Map.empty (Just name) cliFlags
+    , Map.findWithDefault Map.empty Nothing cliFlags
+    , Map.findWithDefault Map.empty name (bcFlags bconfig)
+    ]
+  where
+    cliFlags = boptsCLIFlags boptsCli
+
+-- | Get the configured options to pass from GHC, based on the build
+-- configuration and commandline.
+getGhcOptions :: BuildConfig
+              -> BuildOptsCLI
+              -> PackageName
+              -> Bool
+              -> Bool
+              -> [Text]
+getGhcOptions bconfig boptsCli name isTarget isLocal = concat
+    [ Map.findWithDefault [] AGOEverything (configGhcOptionsByCat config)
+    , if isLocal
+        then Map.findWithDefault [] AGOLocals (configGhcOptionsByCat config)
+        else []
+    , if isTarget
+        then Map.findWithDefault [] AGOTargets (configGhcOptionsByCat config)
+        else []
+    , Map.findWithDefault [] name (configGhcOptionsByName config)
+    , concat [["-fhpc"] | isLocal && toCoverage (boptsTestOpts bopts)]
+    , if boptsLibProfile bopts || boptsExeProfile bopts
+         then ["-fprof-auto","-fprof-cafs"]
+         else []
+    , if not $ boptsLibStrip bopts || boptsExeStrip bopts
+         then ["-g"]
+         else []
+    , if includeExtraOptions
+         then boptsCLIGhcOptions boptsCli
+         else []
+    ]
+  where
+    bopts = configBuild config
+    config = view configL bconfig
+    includeExtraOptions =
+        case configApplyGhcOptions config of
+            AGOTargets -> isTarget
+            AGOLocals -> isLocal
+            AGOEverything -> True

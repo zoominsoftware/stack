@@ -85,6 +85,7 @@ dependencies:
 - persistent-sqlite
 - persistent-template
 - pretty
+- pretty-show
 - primitive
 - process
 - project-template

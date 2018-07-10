@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections      #-}
 {-# LANGUAGE ViewPatterns       #-}
+
 -- | Parsing command line targets
 --
 -- There are two relevant data sources for performing this parsing:
@@ -218,7 +219,8 @@ data ResolveResult = ResolveResult
 -- | Convert a 'RawTarget' into a 'ResolveResult' (see description on
 -- the module).
 resolveRawTarget
-  :: forall env. HasConfig env
+  :: forall env
+   . HasConfig env
   => Map PackageName (LoadedPackageInfo GhcPkgId) -- ^ globals
   -> Map PackageName (LoadedPackageInfo (PackageLocationIndex FilePath)) -- ^ snapshot
   -> Map PackageName (GenericPackageDescription, PackageLocationIndex FilePath) -- ^ local deps
@@ -409,6 +411,7 @@ data Target
   -- ^ Build all of the default components.
   | TargetComps !(Set NamedComponent)
   -- ^ Only build specific components
+  deriving Show
 
 data PackageType = ProjectPackage | Dependency
   deriving (Eq, Show)

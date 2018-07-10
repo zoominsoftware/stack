@@ -21,6 +21,11 @@ module Stack.Build
   ,CabalVersionException(..))
   where
 
+-- TODO: REMOVE YA NUMPTY
+---------------------------------------------------------------------------------
+import                                     Stack.Debug
+---------------------------------------------------------------------------------
+
 import           Stack.Prelude
 import           Data.Aeson (Value (Object, Array), (.=), object)
 import qualified Data.HashMap.Strict as HM
@@ -44,6 +49,7 @@ import           Stack.Build.Source
 import           Stack.Build.Target
 import           Stack.Package
 import           Stack.PackageLocation (parseSingleCabalFileIndex)
+import           Stack.SourceMap (getUnresolvedSourceMap, resolveSourceMap)
 import           Stack.Types.Build
 import           Stack.Types.BuildPlan
 import           Stack.Types.Config
@@ -80,63 +86,71 @@ build setLocalFiles mbuildLk boptsCli = fixCodePage $ do
     let profiling = boptsLibProfile bopts || boptsExeProfile bopts
     let symbols = not (boptsLibStrip bopts || boptsExeStrip bopts)
 
-    (targets, ls, locals, extraToBuild, sourceMap) <- loadSourceMapFull NeedTargets boptsCli
+    usm <- getUnresolvedSourceMap
+    -- errorDumpPretty usm
+    rsm <- resolveSourceMap NeedTargets boptsCli usm
+    errorDumpPretty rsm
 
+    -- (targets, ls, locals, extraToBuild, sourceMap) <-
+    --   loadSourceMapFull NeedTargets boptsCli
+
+    undefined
+    -- rsm <- resolveSourceMap NeedTargets boptsCli
     -- Set local files, necessary for file watching
-    stackYaml <- view stackYamlL
-    liftIO $ setLocalFiles
-           $ Set.insert stackYaml
-           $ Set.unions
-             -- The `locals` value above only contains local project
-             -- packages, not local dependencies. This will get _all_
-             -- of the local files we're interested in
-             -- watching. Arguably, we should not bother watching repo
-             -- and archive files, since those shouldn't
-             -- change. That's a possible optimization to consider.
-             [lpFiles lp | PSFiles lp _ <- Map.elems sourceMap]
+    -- stackYaml <- view stackYamlL
+    -- liftIO $ setLocalFiles
+    --        $ Set.insert stackYaml
+    --        $ Set.unions
+    --          -- The `locals` value above only contains local project
+    --          -- packages, not local dependencies. This will get _all_
+    --          -- of the local files we're interested in
+    --          -- watching. Arguably, we should not bother watching repo
+    --          -- and archive files, since those shouldn't
+    --          -- change. That's a possible optimization to consider.
+    --          [lpFiles lp | PSFiles lp _ <- Map.elems sourceMap]
 
-    (installedMap, globalDumpPkgs, snapshotDumpPkgs, localDumpPkgs) <-
-        getInstalled
-                     GetInstalledOpts
-                         { getInstalledProfiling = profiling
-                         , getInstalledHaddock   = shouldHaddockDeps bopts
-                         , getInstalledSymbols   = symbols }
-                     sourceMap
+    -- (installedMap, globalDumpPkgs, snapshotDumpPkgs, localDumpPkgs) <-
+    --     getInstalled
+    --                  GetInstalledOpts
+    --                      { getInstalledProfiling = profiling
+    --                      , getInstalledHaddock   = shouldHaddockDeps bopts
+    --                      , getInstalledSymbols   = symbols }
+    --                  sourceMap
 
-    baseConfigOpts <- mkBaseConfigOpts boptsCli
-    plan <- constructPlan ls baseConfigOpts locals extraToBuild localDumpPkgs loadPackage sourceMap installedMap (boptsCLIInitialBuildSteps boptsCli)
+    -- baseConfigOpts <- mkBaseConfigOpts boptsCli
+    -- plan <- constructPlan ls baseConfigOpts locals extraToBuild localDumpPkgs loadPackage sourceMap installedMap (boptsCLIInitialBuildSteps boptsCli)
 
-    allowLocals <- view $ configL.to configAllowLocals
-    unless allowLocals $ case justLocals plan of
-      [] -> return ()
-      localsIdents -> throwM $ LocalPackagesPresent localsIdents
+    -- allowLocals <- view $ configL.to configAllowLocals
+    -- unless allowLocals $ case justLocals plan of
+    --   [] -> return ()
+    --   localsIdents -> throwM $ LocalPackagesPresent localsIdents
 
-    -- If our work to do is all local, let someone else have a turn with the snapshot.
-    -- They won't damage what's already in there.
-    case (mbuildLk, allLocal plan) of
-       -- NOTE: This policy is too conservative.  In the future we should be able to
-       -- schedule unlocking as an Action that happens after all non-local actions are
-       -- complete.
-      (Just lk,True) -> do logDebug "All installs are local; releasing snapshot lock early."
-                           liftIO $ unlockFile lk
-      _ -> return ()
+    -- -- If our work to do is all local, let someone else have a turn with the snapshot.
+    -- -- They won't damage what's already in there.
+    -- case (mbuildLk, allLocal plan) of
+    --    -- NOTE: This policy is too conservative.  In the future we should be able to
+    --    -- schedule unlocking as an Action that happens after all non-local actions are
+    --    -- complete.
+    --   (Just lk,True) -> do logDebug "All installs are local; releasing snapshot lock early."
+    --                        liftIO $ unlockFile lk
+    --   _ -> return ()
 
-    checkCabalVersion
-    warnAboutSplitObjs bopts
-    warnIfExecutablesWithSameNameCouldBeOverwritten locals plan
+    -- checkCabalVersion
+    -- warnAboutSplitObjs bopts
+    -- warnIfExecutablesWithSameNameCouldBeOverwritten locals plan
 
-    when (boptsPreFetch bopts) $
-        preFetch plan
+    -- when (boptsPreFetch bopts) $
+    --     preFetch plan
 
-    if boptsCLIDryrun boptsCli
-        then printPlan plan
-        else executePlan boptsCli baseConfigOpts locals
-                         globalDumpPkgs
-                         snapshotDumpPkgs
-                         localDumpPkgs
-                         installedMap
-                         targets
-                         plan
+    -- if boptsCLIDryrun boptsCli
+    --     then printPlan plan
+    --     else executePlan boptsCli baseConfigOpts locals
+    --                      globalDumpPkgs
+    --                      snapshotDumpPkgs
+    --                      localDumpPkgs
+    --                      installedMap
+    --                      targets
+    --                      plan
 
 -- | If all the tasks are local, they don't mutate anything outside of our local directory.
 allLocal :: Plan -> Bool

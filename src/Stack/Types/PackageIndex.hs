@@ -90,7 +90,7 @@ instance FromJSON PackageDownload where
         hashes <- o .: "package-hashes"
         sha256' <- maybe mzero return (Map.lookup ("SHA256" :: Text) hashes)
         sha256 <-
-          case mkStaticSHA256FromText sha256' of
+          case mkStaticSHA256FromHex sha256' of
             Left e -> fail $ "Invalid sha256: " ++ show e
             Right x -> return x
         locs <- o .: "package-locations"
@@ -117,7 +117,7 @@ instance FromJSON HSPackageDownload where
         hashes <- o4 .: "hashes"
         sha256' <- hashes .: "sha256"
         sha256 <-
-          case mkStaticSHA256FromText sha256' of
+          case mkStaticSHA256FromHex sha256' of
             Left e -> fail $ "Invalid sha256: " ++ show e
             Right x -> return x
         return $ HSPackageDownload PackageDownload

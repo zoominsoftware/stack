@@ -82,9 +82,9 @@ resolveSinglePackageLocation projRoot (PLArchive (Archive url subdir msha)) = do
                     [ "Invalid SHA256 found for local archive "
                     , show file
                     , "\nExpected: "
-                    , T.unpack $ staticSHA256ToText sha
+                    , T.unpack $ staticSHA256ToHex sha
                     , "\nActual:   "
-                    , T.unpack $ staticSHA256ToText actualSha
+                    , T.unpack $ staticSHA256ToHex actualSha
                     ]
               return file
             else do

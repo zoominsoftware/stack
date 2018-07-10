@@ -43,10 +43,12 @@ type UnresolvedSourceMap = Map PackageName UnresolvedPackageSource
 
 data UnresolvedGlobalPackage =
   UnresolvedGlobalPackage !Version !GhcPkgId
+  deriving Show
 
 data UnresolvedPackageSource
   = UPSGlobal !Version !GhcPkgId
   | UPSInstallable !UnresolvedInstallable
+  deriving Show
 
 --       { packageConfigEnableTests = False
 --       , packageConfigEnableBenchmarks = False
@@ -65,6 +67,7 @@ data InstallablePackageConfig =
     SnapshotPackageConfig InstallableConfig
   -- | LocalCfg UnflaggedInstallableConfig
   | LocalPackageConfig
+  deriving Show
 
 data InstallableConfig =
   InstallableConfig {
@@ -73,6 +76,7 @@ data InstallableConfig =
     -- , installableConfigCompilerVersion :: !(CompilerVersion 'CVActual)
     -- , installableConfigPlatform :: !Platform
   }
+  deriving Show
 
 -- type FlaggedInstallableConfig = InstallableConfig !(Map FlagName Bool) ![Text]
 -- type UnflaggedInstallableConfig = InstallableConfig () ()
@@ -86,12 +90,11 @@ data InstallableConfig =
 --   }
 
 data UnresolvedInstallable = UnresolvedInstallable
-  { -- Is this needed?
-    -- uiLocation :: !(PackageLocationIndex FilePath),
-  uiInstallableConfig :: !InstallablePackageConfig
-  -- { uiLocation :: !(PackageLocationIndex FilePath)
+  { uiLocation :: !(PackageLocationIndex FilePath)
+  , uiInstallableConfig :: !InstallablePackageConfig
   -- , uiPackageConfig :: !PackageConfig -- FIXME probably don't need GHC info in here directly
   }
+  deriving Show
 
 data LoadedInstallable = LoadedInstallable
   { liUnresolved :: !UnresolvedInstallable
@@ -109,29 +112,35 @@ data LoadedInstallable = LoadedInstallable
   , liExes :: !(Set ExeName)
   , liSetupDeps :: !(Maybe (Map PackageName VersionRange))
   }
+  deriving Show
 
 type ResolvedSourceMap = Map PackageName ResolvedPackageSourceKey
 
-newtype RPSKey = RPSKey { _unRPSKey :: StaticSHA256 }
+newtype RPSKey =
+  RPSKey { _unRPSKey :: StaticSHA256 } deriving Show
 
-data ResolvedPackageSourceKey = RPSK !ResolvedPackageSource !RPSKey
+data ResolvedPackageSourceKey =
+  RPSK !ResolvedPackageSource !RPSKey
+  deriving Show
 
 data ResolvedPackageSource
   = RPSGlobal !Version !GhcPkgId
   | RPSInstallable !ResolvedInstallable
+  deriving Show
 
 data ResolvedInstallable = ResolvedInstallable
   { riUnresolved :: !UnresolvedInstallable
   , riDeps :: !(Map PackageName RPSKey)
   }
+  deriving Show
 
-<<<<<<< HEAD
 data Toolchain =
   Toolchain {
     toolchainCompilerVersion :: CompilerVersion 'CVActual
-  , toolchainInstallLocation :: Text -- ??? ick
+  -- , toolchainInstallLocation :: Text -- ??? ick
   , toolchainPlatform :: Platform -- ??? ick
   }
+  deriving Show
   -- FIXME identify GHC version, install location, arch, whatever else
   -- we can think of
 
@@ -144,31 +153,31 @@ getToolchain :: ( HasProcessContext env
 getToolchain wc = do
   cv <- getCompilerVersion wc
   platform <- view platformL
-  let installLocation =
-        error "TODO: ??? Snapshot?"
-  return $ Toolchain cv installLocation platform
+  -- let installLocation =
+  --       error "TODO: ??? Snapshot?"
+  return $ Toolchain cv platform
 
 mkRPSKey
   :: Toolchain
   -> PackageName
   -> ResolvedPackageSource
-<<<<<<< HEAD
-  -> Either StringException RPSKey
+  -> RPSKey
 mkRPSKey toolchain pkgName rps = do
   let toolchainSubkey =
         keyToolchain toolchain
       pkgText =
         packageNameText pkgName
-  RPSKey <$> buildRps toolchainSubkey pkgText rps
+  RPSKey $ buildRps toolchainSubkey pkgText rps
   where
     keyToolchain :: Toolchain -> Text
-    keyToolchain (Toolchain compilerVersion installLocation platform) =
-      undefined
+    keyToolchain (Toolchain compilerVersion platform) =
+         compilerVersionText compilerVersion
+      <> tshow platform
     buildRps tc pkg (RPSGlobal version ghcPkgId) =
-      mkStaticSHA256FromText $
+      textToStaticSHA256 $
            tc
         <> pkg
         <> versionText version
         <> ghcPkgIdText ghcPkgId
     buildRps tc pkg (RPSInstallable (ResolvedInstallable unresolved riDeps)) =
-      mkStaticSHA256FromText $ tc <> pkg <> undefined
+      textToStaticSHA256 $ tc <> pkg <> undefined

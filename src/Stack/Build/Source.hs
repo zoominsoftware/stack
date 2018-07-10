@@ -13,6 +13,7 @@ module Stack.Build.Source
     , getLocalFlags
     , getGhcOptions
     , addUnlistedToBuildCache
+    , module Export
     ) where
 
 import              Stack.Prelude
@@ -33,6 +34,7 @@ import              Stack.Config (getLocalPackages)
 import              Stack.Constants (wiredInPackages)
 import              Stack.Package
 import              Stack.PackageLocation
+import              Stack.SourceMap as Export
 import              Stack.Types.Build
 import              Stack.Types.BuildPlan
 import              Stack.Types.Config
@@ -114,51 +116,6 @@ loadSourceMapFull needTargets boptsCli = do
       , sourceMap
       )
 
--- | All flags for a local package.
-getLocalFlags
-    :: BuildConfig
-    -> BuildOptsCLI
-    -> PackageName
-    -> Map FlagName Bool
-getLocalFlags bconfig boptsCli name = Map.unions
-    [ Map.findWithDefault Map.empty (Just name) cliFlags
-    , Map.findWithDefault Map.empty Nothing cliFlags
-    , Map.findWithDefault Map.empty name (bcFlags bconfig)
-    ]
-  where
-    cliFlags = boptsCLIFlags boptsCli
-
--- | Get the configured options to pass from GHC, based on the build
--- configuration and commandline.
-getGhcOptions :: BuildConfig -> BuildOptsCLI -> PackageName -> Bool -> Bool -> [Text]
-getGhcOptions bconfig boptsCli name isTarget isLocal = concat
-    [ Map.findWithDefault [] AGOEverything (configGhcOptionsByCat config)
-    , if isLocal
-        then Map.findWithDefault [] AGOLocals (configGhcOptionsByCat config)
-        else []
-    , if isTarget
-        then Map.findWithDefault [] AGOTargets (configGhcOptionsByCat config)
-        else []
-    , Map.findWithDefault [] name (configGhcOptionsByName config)
-    , concat [["-fhpc"] | isLocal && toCoverage (boptsTestOpts bopts)]
-    , if boptsLibProfile bopts || boptsExeProfile bopts
-         then ["-fprof-auto","-fprof-cafs"]
-         else []
-    , if not $ boptsLibStrip bopts || boptsExeStrip bopts
-         then ["-g"]
-         else []
-    , if includeExtraOptions
-         then boptsCLIGhcOptions boptsCli
-         else []
-    ]
-  where
-    bopts = configBuild config
-    config = view configL bconfig
-    includeExtraOptions =
-        case configApplyGhcOptions config of
-            AGOTargets -> isTarget
-            AGOLocals -> isLocal
-            AGOEverything -> True
 
 splitComponents :: [NamedComponent]
                 -> (Set Text, Set Text, Set Text)

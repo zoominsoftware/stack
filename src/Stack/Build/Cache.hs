@@ -273,7 +273,7 @@ precompiledCacheFile loc copts installedPackageIDs = do
           PLOther other -> case other of
             PLFilePath _ -> assert False Nothing -- no PLFilePaths should end up in a snapshot
             PLArchive a -> fmap
-              (\h -> T.unpack (staticSHA256ToText h) ++ archiveSubdirs a)
+              (\h -> T.unpack (staticSHA256ToHex h) ++ archiveSubdirs a)
               (archiveHash a)
             PLRepo r -> Just $ T.unpack (repoCommit r) ++ repoSubdirs r
 
