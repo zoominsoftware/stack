@@ -130,6 +130,7 @@ import Data.Aeson.Extended (WithJSONWarnings (..), Value)
 import Data.Aeson.Types (parseEither)
 import Data.Monoid (Endo (..))
 import Network.HTTP.StackClient
+import qualified Network.URI
 import Network.HTTP.Types (ok200)
 import qualified Network.HTTP.Client.Conduit as HTTP
 import qualified Distribution.Text
@@ -141,10 +142,11 @@ withPantryConfig
   => Path Abs Dir -- ^ pantry root
   -> HackageSecurityConfig
   -> HpackExecutable
+  -> Network.URI.URI -- ^ pantry server URI
   -> Int -- ^ connection count
   -> (PantryConfig -> RIO env a)
   -> RIO env a
-withPantryConfig root hsc he count inner = do
+withPantryConfig root hsc he uri count inner = do
   env <- ask
   manager <- liftIO HTTP.newManager
   -- Silence persistent's logging output, which is really noisy
@@ -158,6 +160,7 @@ withPantryConfig root hsc he count inner = do
       , pcUpdateRef = ur
       , pcConnectionCount = count
       , pcManager = manager
+      , pcStorageServerURI = uri
       }
 
 defaultHackageSecurityConfig :: HackageSecurityConfig
@@ -855,6 +858,7 @@ runPantryApp f = runSimpleApp $ do
     root
     defaultHackageSecurityConfig
     HpackBundled
+    Network.URI.nullURI -- TODO: Get from config somewhere.
     8
     $ \pc ->
       runRIO

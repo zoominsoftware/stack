@@ -101,6 +101,7 @@ import qualified Distribution.Text
 import Distribution.Types.Version (Version)
 import Data.Store (Size (..), Store (..)) -- FIXME remove
 import Network.HTTP.Client (parseRequest)
+import Network.URI (URI)
 import qualified Network.HTTP.Client.Conduit as HTTP
 import Network.HTTP.Types (Status, statusCode)
 import Data.Text.Read (decimal)
@@ -135,6 +136,9 @@ data PantryConfig = PantryConfig
   , pcConnectionCount :: !Int
   -- ^ concurrently open downloads
   , pcManager :: HTTP.Manager
+  -- ^ Manager for connecting to the pantry storage server.
+  , pcStorageServerURI :: URI
+  -- ^ URI for connecting to the pantry storage server.
   }
 
 -- | A directory which was loaded up relative and has been resolved
