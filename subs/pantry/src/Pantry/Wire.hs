@@ -14,7 +14,6 @@ module Pantry.Wire
     , PantryWireException(..)
     ) where
 
-import           Control.Monad
 import           Control.Monad.Catch
 import           Control.Monad.Primitive
 import qualified Crypto.Hash as Crypto
@@ -25,6 +24,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Builder as L
 import           Data.Conduit
 import qualified Data.Conduit.Attoparsec as CA
+import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List as CL
 import           Data.Typeable
 import           Pantry.StaticSHA256
@@ -70,24 +70,18 @@ wireReceiverConduit expectations = eventConduit
                                      (SHA256Mismatch givenSha256 actualSha256)
                     | otherwise ->
                         throwM (UnexpectedSha256 givenSha256 givenSha256)
-    sizeValidatingConduit expectedSha256 expectedLength =
-        go expectedLength Crypto.hashInit
-      where
-        go 0 ctx = pure (mkStaticSHA256FromDigest (Crypto.hashFinalize ctx))
-        go remaining (!ctx) = do
-            mchunk <- await
-            case mchunk of
-                Nothing ->
-                    throwM
-                        (TruncatedInputForHash
-                             expectedSha256
-                             expectedLength
-                             remaining)
-                Just incoming -> do
-                    let (this, next) = S.splitAt remaining incoming
-                    unless (S.null next) (leftover next)
-                    yield (ChunkEvent this)
-                    go (remaining - S.length this) (Crypto.hashUpdate ctx this)
+    sizeValidatingConduit expectedSha256 expectedLength = do
+        (len, ctx) <-
+            CB.isolate expectedLength .|
+            CL.mapAccum
+                (\chunk (!len, ctx) ->
+                     ( (len + S.length chunk, Crypto.hashUpdate ctx chunk)
+                     , ChunkEvent chunk))
+                (0, Crypto.hashInit)
+        if len == expectedLength
+            then pure (mkStaticSHA256FromDigest (Crypto.hashFinalize ctx))
+            else throwM
+                     (TruncatedInputForHash expectedSha256 expectedLength len)
 
 -- | Send wire events to the pantry client.
 wireSenderConduit ::
