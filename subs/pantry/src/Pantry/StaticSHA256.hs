@@ -9,6 +9,7 @@ module Pantry.StaticSHA256
   , mkStaticSHA256FromFile
   , mkStaticSHA256FromDigest
   , mkStaticSHA256FromBytes
+  , rawStaticSHA256Parser
   , staticSHA256ToText
   , staticSHA256ToBase16
   , staticSHA256ToRaw
@@ -17,6 +18,7 @@ module Pantry.StaticSHA256
 
 import RIO
 import Data.Aeson
+import qualified Data.Attoparsec.ByteString as Atto
 import Database.Persist.Sql
 import Pantry.StaticBytes
 import Data.Store (Store) -- FIXME remove
@@ -94,6 +96,14 @@ mkStaticSHA256FromText t =
       , " into SHA256: "
       , show e
       ]
+
+-- | Parse from an exact 32-byte string input (NOT HEX).
+rawStaticSHA256Parser :: Atto.Parser StaticSHA256
+rawStaticSHA256Parser = do
+    bytes <- Atto.take 32 -- 256 bits = 32 bytes
+    case toStaticExact bytes of
+      Left e -> fail (show e)
+      Right v -> pure (StaticSHA256 v)
 
 instance ToJSON StaticSHA256 where
   toJSON = toJSON . staticSHA256ToText

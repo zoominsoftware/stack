@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -54,19 +55,25 @@ module Pantry.Storage
   , UrlBlobTableId
   ) where
 
-import RIO
+import           Data.Conduit
+import qualified Data.Conduit.ByteString.Builder as CB
+import           Data.Pool (destroyAllResources)
+import           Database.Persist
+import           Database.Persist.Sqlite -- FIXME allow PostgreSQL too
+import           Database.Persist.TH
+import           Network.HTTP.Client (HasHttpManager)
+import qualified Network.HTTP.Client.Conduit as HTTP
+import           Pantry.StaticSHA256
+import           Pantry.StaticSHA256 (staticSHA256ToBuilder)
+import           Pantry.Types
+import           Pantry.Wire
+import           Path (Path, Abs, File, toFilePath, parent)
+import           Path.IO (ensureDir)
+import           RIO
 import qualified RIO.ByteString as B
-import Pantry.Types
-import Database.Persist
-import Database.Persist.Sqlite -- FIXME allow PostgreSQL too
-import Database.Persist.TH
-import RIO.Orphans ()
-import Pantry.StaticSHA256
 import qualified RIO.Map as Map
-import RIO.Time (UTCTime, getCurrentTime)
-import Path (Path, Abs, File, toFilePath, parent)
-import Path.IO (ensureDir)
-import Data.Pool (destroyAllResources)
+import           RIO.Orphans ()
+import           RIO.Time (UTCTime, getCurrentTime)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 BlobTable sql=blob
@@ -216,6 +223,34 @@ loadBlobBySHA
   => StaticSHA256
   -> ReaderT SqlBackend (RIO env) (Maybe ByteString)
 loadBlobBySHA sha = fmap (fmap (blobTableContents . entityVal)) $ getBy $ UniqueBlobHash sha
+
+-- | Load blobs from the pantry storage server.
+--
+-- Pass in a sink which consumes input blobs one by one.
+--
+-- Optimization note: The input SHA1s could be changed to a packed
+-- vector, or else a conduit source.
+loadBlobsFromPantry ::
+       (HasPantryConfig env, HasHttpManager env, HasLogFunc env)
+    => [(StaticSHA256, Int)] -- ^ SHA1s and their expected sizes.
+    -> ConduitM WireEvent Void (RIO env) a
+    -> RIO env a
+loadBlobsFromPantry sha1s sink = do
+    uri <- view $ pantryConfigL . to pcStorageServerURI
+    request <-
+        do r <- HTTP.requestFromURI uri
+           pure r {HTTP.requestBody = requestBody}
+    HTTP.withResponse
+        request
+        (\response ->
+             runConduit
+                 (HTTP.responseBody response .| wireReceiverConduit sha1s .|
+                  sink))
+  where
+    requestBody =
+        HTTP.requestBodySourceChunked
+            (yield (mconcat (map staticSHA256ToBuilder (map fst sha1s))) .|
+             CB.builderToByteString)
 
 loadBlobById
   :: (HasPantryConfig env, HasLogFunc env)
