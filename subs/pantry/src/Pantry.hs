@@ -131,6 +131,7 @@ import Data.Aeson.Types (parseEither)
 import Data.Monoid (Endo (..))
 import Network.HTTP.StackClient
 import Network.HTTP.Types (ok200)
+import qualified Network.HTTP.Client.Conduit as HTTP
 import qualified Distribution.Text
 import Distribution.Types.VersionRange (withinRange)
 import qualified RIO.FilePath
@@ -145,6 +146,7 @@ withPantryConfig
   -> RIO env a
 withPantryConfig root hsc he count inner = do
   env <- ask
+  manager <- liftIO HTTP.newManager
   -- Silence persistent's logging output, which is really noisy
   runRIO (mempty :: LogFunc) $ initStorage (root </> $(mkRelFile "pantry.sqlite3")) $ \storage -> runRIO env $ do
     ur <- newMVar True
@@ -155,6 +157,7 @@ withPantryConfig root hsc he count inner = do
       , pcStorage = storage
       , pcUpdateRef = ur
       , pcConnectionCount = count
+      , pcManager = manager
       }
 
 defaultHackageSecurityConfig :: HackageSecurityConfig
