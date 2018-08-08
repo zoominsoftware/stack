@@ -12,6 +12,7 @@ module Pantry.StaticSHA256
   , staticSHA256ToText
   , staticSHA256ToBase16
   , staticSHA256ToRaw
+  , staticSHA256ToBuilder
   ) where
 
 import RIO
@@ -24,6 +25,7 @@ import           Crypto.Hash.Conduit (hashFile)
 import           Crypto.Hash as Hash (hash, Digest, SHA256)
 import qualified Data.ByteArray
 import qualified Data.ByteArray.Encoding as Mem
+import Data.ByteString.Builder (byteString)
 
 -- | A SHA256 hash, stored in a static size for more efficient
 -- serialization with store.
@@ -74,6 +76,9 @@ staticSHA256ToBase16 (StaticSHA256 x) = Mem.convertToBase Mem.Base16 x
 
 staticSHA256ToRaw :: StaticSHA256 -> ByteString
 staticSHA256ToRaw (StaticSHA256 x) = Data.ByteArray.convert x
+
+staticSHA256ToBuilder :: StaticSHA256 -> Builder
+staticSHA256ToBuilder = byteString . staticSHA256ToRaw
 
 -- | Generate a 'StaticSHA256' value from a base16-encoded SHA256 hash.
 mkStaticSHA256FromText :: Text -> Either SomeException StaticSHA256
