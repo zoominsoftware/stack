@@ -236,21 +236,20 @@ loadBlobsFromPantry ::
     -> ConduitM WireEvent Void (RIO env) a
     -> RIO env a
 loadBlobsFromPantry sha1s sink = do
-    uri <- view $ pantryConfigL . to pcStorageServerURI
-    request <-
-        do r <- HTTP.requestFromURI uri
-           pure r {HTTP.requestBody = requestBody}
-    HTTP.withResponse
-        request
-        (\response ->
-             runConduit
-                 (HTTP.responseBody response .| wireReceiverConduit sha1s .|
-                  sink))
+  uri <- view $ pantryConfigL . to pcStorageServerURI
+  request <-
+    do r <- HTTP.requestFromURI uri
+       pure r {HTTP.requestBody = requestBody}
+  HTTP.withResponse
+    request
+    (\response ->
+       runConduit
+         (HTTP.responseBody response .| wireReceiverConduit sha1s .| sink))
   where
     requestBody =
-        HTTP.requestBodySourceChunked
-            (yield (mconcat (map staticSHA256ToBuilder (map fst sha1s))) .|
-             CB.builderToByteString)
+      HTTP.requestBodySourceChunked
+        (yield (mconcat (map staticSHA256ToBuilder (map fst sha1s))) .|
+         CB.builderToByteString)
 
 loadBlobById
   :: (HasPantryConfig env, HasLogFunc env)

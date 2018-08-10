@@ -100,10 +100,10 @@ mkStaticSHA256FromText t =
 -- | Parse from an exact 32-byte string input (NOT HEX).
 rawStaticSHA256Parser :: Atto.Parser StaticSHA256
 rawStaticSHA256Parser = do
-    bytes <- Atto.take 32 -- 256 bits = 32 bytes
-    case toStaticExact bytes of
-      Left e -> fail (show e)
-      Right v -> pure (StaticSHA256 v)
+  bytes <- Atto.take 32 -- 256 bits = 32 bytes
+  case toStaticExact bytes of
+    Left e -> fail (show e)
+    Right v -> pure (StaticSHA256 v)
 
 instance ToJSON StaticSHA256 where
   toJSON = toJSON . staticSHA256ToText
