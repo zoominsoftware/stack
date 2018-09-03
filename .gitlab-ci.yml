@@ -8,7 +8,6 @@ cache:
 
 stages:
   - build
-  - test
 
 variables:
     STACK_ROOT: "${CI_PROJECT_DIR}/.stack-root"
@@ -23,15 +22,15 @@ build:
     - stack etc/scripts/release.hs check
 
 #@@@ TO SPLIT BUILD INTO TWO PARTS AND GET AROUND TIMEOUT
+#@@@ manual_build:
+#@@@   stage: build
+#@@@   when: manual
+#@@@   script:
+#@@@     - export PATH=$HOME/.local/bin:$PATH
+#@@@     - stack build --only-dependencies
+
 manual_build:
   stage: build
-  when: manual
-  script:
-    - export PATH=$HOME/.local/bin:$PATH
-    - stack build --only-dependencies
-
-manual_test:
-  stage: test
   when: manual
   script: *build
 
